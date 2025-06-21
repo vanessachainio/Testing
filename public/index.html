@@ -1,63 +1,224 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OAuth2 Connect All</title>
+  <meta charset="UTF-8">
+  <title>Solana DApp Login Menu</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background-color: #111827;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      position: relative;
+    }
+
+    .left-group {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .menu-toggle {
+      font-size: 24px;
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      display: block;
+    }
+
+    .logo {
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+
+    .user-container {
+      position: relative;
+    }
+
+    .user-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 9999px;
+      object-fit: cover;
+      border: 2px solid white;
+      cursor: pointer;
+    }
+
+    .user-dropdown {
+      display: none;
+      position: absolute;
+      top: 50px;
+      right: 0;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      z-index: 1000;
+      min-width: 180px;
+    }
+
+    .user-dropdown button {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      background: white;
+      text-align: left;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .user-dropdown button:hover {
+      background: #f3f4f6;
+    }
+
+    nav {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background-color: #1f2937;
+      width: 200px;
+      display: none;
+      flex-direction: column;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      z-index: 10;
+    }
+
+    nav a {
+      color: white;
+      text-decoration: none;
+      padding: 12px 16px;
+      border-bottom: 1px solid #374151;
+    }
+
+    nav a:hover {
+      background-color: #374151;
+    }
+
+    nav.show {
+      display: flex;
+    }
+
+    main {
+      padding: 2rem;
+      text-align: center;
+    }
+
+    @media (min-width: 768px) {
+      .menu-toggle {
+        display: none;
+      }
+
+      nav {
+        display: flex !important;
+        position: static;
+        flex-direction: row;
+        background: none;
+        box-shadow: none;
+        width: auto;
+      }
+
+      nav a {
+        border: none;
+        padding: 0 1rem;
+      }
+
+      .left-group {
+        gap: 2rem;
+      }
+    }
+  </style>
+
+  <!-- Firebase CDN -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 </head>
 <body>
-  <h1>OAuth2 Connect All</h1>
-  <div id="status">Checking login status...</div>
-  <div id="buttons">
-    <button onclick="window.location.href='/api/discord/login'">Connect Discord</button>
-    <button onclick="window.location.href='/api/youtube/login'">Connect YouTube</button>
-    <button onclick="window.location.href='/api/twitter/login'">Connect Twitter</button>
-    <button onclick="startTelegramOAuth()">Connect Telegram</button>
-  </div>
-  <div id="disconnects" style="display:none">
-    <button onclick="disconnect('discord')">Disconnect Discord</button>
-    <button onclick="disconnect('youtube')">Disconnect YouTube</button>
-    <button onclick="disconnect('twitter')">Disconnect Twitter</button>
-    <button onclick="disconnect('telegram')">Disconnect Telegram</button>
-  </div>
+  <header>
+    <div class="left-group">
+      <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+      <div class="logo">🌐 Solana DApp</div>
+    </div>
+
+    <!-- User Icon + Dropdown -->
+    <div class="user-container">
+      <img src="https://www.w3schools.com/howto/img_avatar.png" alt="User" class="user-icon" onclick="toggleUserDropdown()">
+      <div class="user-dropdown" id="userDropdown">
+        <button onclick="loginWithGoogle()">Connect Gmail</button>
+        <button onclick="loginWithTwitter()">Connect Twitter</button>
+        <button onclick="loginWithDiscord()">Connect Discord</button>
+      </div>
+    </div>
+
+    <nav id="navMenu">
+      <a href="#">Home</a>
+      <a href="#">Community</a>
+      <a href="#">Whitelist Private Sale</a>
+      <a href="#">Private Sale</a>
+      <a href="#">Presale</a>
+      <a href="#">Public Sale</a>
+      <a href="#">Roadmap</a>
+      <a href="#">Tokenomics</a>
+    </nav>
+  </header>
+
+  <main>
+    <h1>Selamat datang di DApp Solana</h1>
+    <p>Gunakan menu atau login dari ikon user di kanan atas.</p>
+  </main>
+
   <script>
-    async function checkLogin(service) {
-      try {
-        const res = await fetch(`/api/${service}/me`);
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        document.getElementById('status').innerHTML += `<br>${service}: Logged in as ${data.username || data.email}`;
-        return true;
-      } catch {
-        return false;
-      }
+    function toggleMenu() {
+      document.getElementById("navMenu").classList.toggle("show");
     }
 
-    async function checkAll() {
-      const services = ['discord', 'youtube', 'twitter', 'telegram'];
-      const results = await Promise.all(services.map(checkLogin));
-      if (results.some(ok => ok)) {
-        document.getElementById('buttons').style.display = 'none';
-        document.getElementById('disconnects').style.display = 'block';
-      } else {
-        document.getElementById('status').textContent = 'Not logged in';
-      }
+    function toggleUserDropdown() {
+      document.getElementById("userDropdown").classList.toggle("show");
     }
 
-    async function disconnect(service) {
-      await fetch(`/api/${service}/logout`);
-      window.location.reload();
+    // Firebase config kamu sendiri di sini
+    const firebaseConfig = {
+      apiKey: "AIzaSyDk0RoCd0aV4OrnoXA7L5fSZxCeq8sACxo",
+      authDomain: "babypandaflash-64a84.firebaseapp.com",
+      projectId: "babypandaflash-64a84",
+      appId: "1:208885509538:web:9ab3af6ef7dfa7652216fb",
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    function loginWithGoogle() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider)
+        .then(result => alert("Berhasil login Gmail: " + result.user.email))
+        .catch(error => console.error(error));
     }
 
-    function startTelegramOAuth() {
-      const botId = "8090102707";
-      const origin = encodeURIComponent(window.location.origin);
-      const url = `https://oauth.telegram.org/auth?bot_id=${botId}&origin=${origin}&embed=1&request_access=write`;
-      window.location.href = url;
+    function loginWithTwitter() {
+      const provider = new firebase.auth.TwitterAuthProvider();
+      auth.signInWithPopup(provider)
+        .then(result => alert("Berhasil login Twitter: " + result.user.displayName))
+        .catch(error => console.error(error));
     }
 
-    checkAll();
+    function loginWithDiscord() {
+      const provider = new firebase.auth.OAuthProvider('oidc.discord');
+      auth.signInWithPopup(provider)
+        .then(result => alert("Berhasil login Discord: " + result.user.displayName))
+        .catch(error => console.error(error));
+    }
   </script>
 </body>
 </html>
+
